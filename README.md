@@ -6,13 +6,13 @@ Simple Java applications that use the [spark-cassandra-connector](https://github
 
 ## Build
 
-Project depends on Maven 3.* for packaging the jar.
+Project depends on [Maven](https://maven.apache.org/) 3.* for packaging the jar.
 
 ```
 $ mvn clean package
 ```
 
-With a DataStax Enterprise cluster, you can submit the jar using ``dse spark-submit``:
+With a [DataStax Enterprise](http://datastax.com/downloads/) cluster, you can submit the jar using [``dse spark-submit``](http://docs.datastax.com/en/datastax_enterprise/4.6/datastax_enterprise/spark/sparkStart.html?scroll=sparkStart__dseSparkSubmit):
 ```
 $ cd $REPO
 $ dse spark-submit --class net.lenards.SparkCanaryCC \
