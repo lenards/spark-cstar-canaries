@@ -1,5 +1,8 @@
 package net.lenards;
 
+import net.lenards.kinesis.KinesisCheckpointState;
+import net.lenards.kinesis.types.*;
+
 import java.io.Serializable;
 import java.net.InetAddress;
 import java.util.Arrays;
@@ -39,41 +42,12 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
 
-// KinesisCheckpointState related
-import org.apache.spark.streaming.Duration;
-import org.apache.spark.streaming.util.Clock;
-import org.apache.spark.streaming.util.ManualClock;
-import org.apache.spark.streaming.util.SystemClock;
-
 class SerializableDefaultAWSCredentialsProviderChain
     extends DefaultAWSCredentialsProviderChain
     implements Serializable {
 
 }
 
-class KinesisCheckpointState implements Serializable {
-    private Duration checkpointInterval;
-    private ManualClock checkpointClock;
-
-    public KinesisCheckpointState(Duration interval) {
-        this(interval, new SystemClock());
-    }
-
-    public KinesisCheckpointState(Duration interval, Clock current) {
-        this.checkpointInterval = interval;
-        this.checkpointClock = new ManualClock();
-        checkpointClock.setTime(current.currentTime() +
-                                checkpointInterval.milliseconds());
-    }
-
-    public boolean shouldCheckpoint() {
-        return (new SystemClock()).currentTime() > this.checkpointClock.currentTime();
-    }
-
-    public void advanceCheckpoint() {
-        this.checkpointClock.addToTime(checkpointInterval.milliseconds());
-    }
-}
 
 public class Consumer implements Serializable {
     private static final String APP = "StockTradesProcessor";
@@ -89,121 +63,6 @@ public class Consumer implements Serializable {
                             ClientConfiguration.DEFAULT_USER_AGENT,
                             APP, VERSION));
         CLIENT_CONF = config;
-    }
-
-    private static class JKinesisReceiver extends Receiver<byte[]> implements Serializable {
-        private KinesisClientLibConfiguration kclConfig;
-        private String workerId;
-        private Duration checkpointInterval;
-        private InitialPositionInStream initialPosition;
-        private StorageLevel storageLevel;
-        private IRecordProcessorFactory recordProcessorFactory;
-        private Worker worker;
-
-        public JKinesisReceiver(KinesisClientLibConfiguration kclConfig,
-                                String workerId,
-                                Duration checkpoint,
-                                InitialPositionInStream position) {
-            super(StorageLevel.MEMORY_ONLY());
-            this.kclConfig = kclConfig;
-            this.workerId = workerId;
-            this.checkpointInterval = checkpoint;
-            this.initialPosition = position;
-            this.storageLevel = StorageLevel.MEMORY_ONLY();
-        }
-
-
-        @Override
-        public void onStart() {
-
-            this.recordProcessorFactory = new IRecordProcessorFactory() {
-                @Override
-                public IRecordProcessor createProcessor() {
-                    return new EventRecordProcessor(JKinesisReceiver.this, workerId,
-                                new KinesisCheckpointState(checkpointInterval));
-                }
-            };
-
-            this.worker = new Worker(this.recordProcessorFactory, this.kclConfig);
-            int exitCode = 0;
-            try {
-                worker.run();
-            } catch (Throwable t) {
-                exitCode = 1;
-            }
-            System.exit(exitCode);
-        }
-
-        @Override
-        public void onStop() {
-            this.worker.shutdown();
-            this.workerId = null;
-            this.recordProcessorFactory = null;
-            this.worker = null;
-        }
-    }
-
-    private static class EventRecordProcessor implements IRecordProcessor, Serializable {
-        public static final long DEFAULT_INTERVAL_IN_MS = 60000L;
-
-        private String shardId;
-        private String workerId;
-        private JKinesisReceiver receiver;
-        private KinesisCheckpointState checkpointState;
-
-        public EventRecordProcessor(JKinesisReceiver receiver, String workerId,
-                                    KinesisCheckpointState checkpointState) {
-            this.workerId = workerId;
-            this.receiver = receiver;
-            this.checkpointState = checkpointState;
-        }
-
-        @Override
-        public void initialize(String shardId) {
-            this.shardId = shardId;
-        }
-
-        @Override
-        public void processRecords(List<Record> records,
-                                   IRecordProcessorCheckpointer checkpointer) {
-            handleRecords(records);
-            checkpointIfNeeded(checkpointer);
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void shutdown(IRecordProcessorCheckpointer checkpointer, ShutdownReason reason) {
-            // Important to checkpoint after reaching end of shard,
-            // so we can start processing data from child shards.
-            if (reason == ShutdownReason.TERMINATE) {
-                performCheckpoint(checkpointer);
-            }
-        }
-
-        private void handleRecords(List<Record> records) {
-            for (Record r : records) {
-                this.receiver.store(r.getData().array());
-                System.out.println(String.format("%s: %s", r.getPartitionKey(),
-                    r.getData().array()));
-            }
-        }
-
-        private void checkpointIfNeeded(IRecordProcessorCheckpointer checkpointer) {
-            if (checkpointState.shouldCheckpoint()) {
-                performCheckpoint(checkpointer);
-                checkpointState.advanceCheckpoint();
-            }
-        }
-
-        private void performCheckpoint(IRecordProcessorCheckpointer checkpointer) {
-            try {
-                checkpointer.checkpoint();
-            } catch (Exception ex) {
-                System.out.println("Sky is falling! Why? " + ex);
-            }
-        }
     }
 
     public static void verify(String[] args) {
