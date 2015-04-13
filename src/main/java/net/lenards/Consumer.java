@@ -81,6 +81,7 @@ public class Consumer implements Serializable {
 
     public static ClientConfiguration CLIENT_CONF;
     public static AWSCredentialsProvider CREDS;
+    public static KinesisClientLibConfiguration KCL_CONFIG;
 
     static {
         ClientConfiguration config = new ClientConfiguration();
@@ -91,54 +92,29 @@ public class Consumer implements Serializable {
     }
 
     private static class JKinesisReceiver extends Receiver<byte[]> implements Serializable {
-        private String appName;
+        private KinesisClientLibConfiguration kclConfig;
         private String workerId;
-        private AWSCredentialsProvider credentials;
-        private String streamName;
-        private String endpointUrl;
-        private Region region;
         private Duration checkpointInterval;
         private InitialPositionInStream initialPosition;
         private StorageLevel storageLevel;
         private IRecordProcessorFactory recordProcessorFactory;
         private Worker worker;
 
-        public JKinesisReceiver(AWSCredentialsProvider credentials,
-                                String appName, String streamName,
-                                String endpointUrl, Region region,
+        public JKinesisReceiver(KinesisClientLibConfiguration kclConfig,
+                                String workerId,
                                 Duration checkpoint,
                                 InitialPositionInStream position) {
             super(StorageLevel.MEMORY_ONLY());
-            this.credentials = credentials;
-            this.appName = appName;
-            this.streamName = streamName;
-            this.endpointUrl = endpointUrl;
-            this.region = region;
+            this.kclConfig = kclConfig;
+            this.workerId = workerId;
             this.checkpointInterval = checkpoint;
             this.initialPosition = position;
             this.storageLevel = StorageLevel.MEMORY_ONLY();
         }
 
-        private String getHostname() {
-            try {
-                return InetAddress.getLocalHost().getHostAddress();
-            } catch (Exception ex) {
-                return "localhost";
-            }
-        }
 
         @Override
         public void onStart() {
-            this.workerId = getHostname() + ":" + String.valueOf(UUID.randomUUID());
-
-            KinesisClientLibConfiguration kclConfig =
-                    new KinesisClientLibConfiguration(this.appName, this.streamName,
-                                                      this.credentials, this.workerId)
-                            .withKinesisEndpoint(this.endpointUrl)
-                            .withRegionName(region.getName())
-                            .withCommonClientConfig(Consumer.CLIENT_CONF)
-                            .withInitialPositionInStream(this.initialPosition)
-                            .withTaskBackoffTimeMillis(500);
 
             this.recordProcessorFactory = new IRecordProcessorFactory() {
                 @Override
@@ -148,7 +124,7 @@ public class Consumer implements Serializable {
                 }
             };
 
-            this.worker = new Worker(this.recordProcessorFactory, kclConfig);
+            this.worker = new Worker(this.recordProcessorFactory, this.kclConfig);
             int exitCode = 0;
             try {
                 worker.run();
@@ -162,7 +138,6 @@ public class Consumer implements Serializable {
         public void onStop() {
             this.worker.shutdown();
             this.workerId = null;
-            this.credentials = null;
             this.recordProcessorFactory = null;
             this.worker = null;
         }
@@ -244,36 +219,22 @@ public class Consumer implements Serializable {
         String msg = "Cannot load AWS credentials, no 'default' profile available.";
 
         try {
-            //AWSCredentialsProvider provider =
-            //    new ProfileCredentialsProvider("default");
-            //return provider;
-            return new SerializableDefaultAWSCredentialsProviderChain();
+            AWSCredentialsProvider provider =
+                new ProfileCredentialsProvider("default");
+            return provider;
+            //return new SerializableDefaultAWSCredentialsProviderChain();
         } catch (Exception e) {
             throw new AmazonClientException(msg, e);
         }
     }
 
-/*
-    public static void process(KinesisClientLibConfiguration kclConfig) {
-        IRecordProcessorFactory recordProcessorFactory = new IRecordProcessorFactory() {
-            @Override
-            public IRecordProcessor createProcessor() {
-                return new EventRecordProcessor();
-            }
-        };
-
-        // Create the KCL worker with the stock trade record processor factory
-        Worker worker = new Worker(recordProcessorFactory, kclConfig);
-
-        int exitCode = 0;
+    private static String getHostname() {
         try {
-            worker.run();
-        } catch (Throwable t) {
-            exitCode = 1;
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (Exception ex) {
+            return "localhost";
         }
-        System.exit(exitCode);
     }
- */
 
     public static void main(String[] args) throws Exception {
         verify(args);
@@ -284,6 +245,18 @@ public class Consumer implements Serializable {
 
         CREDS = getCredsProvider();
 
+        String workerId = getHostname() + ":" + String.valueOf(UUID.randomUUID());
+
+        KinesisClientLibConfiguration kclConfig
+                    = new KinesisClientLibConfiguration(appName, stream, CREDS,
+                                                       workerId)
+                            .withKinesisEndpoint(endptUrl)
+                            .withRegionName(region.getName())
+                            .withCommonClientConfig(Consumer.CLIENT_CONF)
+                            .withInitialPositionInStream(InitialPositionInStream.LATEST)
+                            .withTaskBackoffTimeMillis(500);
+
+
         SparkConf conf = new SparkConf(true)
                         .set("spark.cassandra.connection.host", "127.0.0.1")
                         .setMaster("local[3]")
@@ -291,13 +264,11 @@ public class Consumer implements Serializable {
 
         Duration batchInterval = new Duration(EventRecordProcessor.DEFAULT_INTERVAL_IN_MS);
 
-
         Duration checkpointInterval = batchInterval;
 
         final JavaStreamingContext jssc = new JavaStreamingContext(conf, batchInterval);
 
-        JKinesisReceiver receiver = new JKinesisReceiver(CREDS, appName,
-                                                         stream, endptUrl, region,
+        JKinesisReceiver receiver = new JKinesisReceiver(kclConfig, workerId,
                                                          checkpointInterval,
                                                          InitialPositionInStream.LATEST);
 
