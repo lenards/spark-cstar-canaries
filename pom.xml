@@ -87,6 +87,7 @@
               </manifestEntries>
             </transformer>
           </transformers>
+          <finalName>uber-${project.artifactId}-${project.version}</finalName>
         </configuration>
         <executions>
           <execution>
