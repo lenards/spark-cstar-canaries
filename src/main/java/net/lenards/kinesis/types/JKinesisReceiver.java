@@ -5,6 +5,8 @@ import java.net.InetAddress;
 import java.util.UUID;
 
 import net.lenards.kinesis.KinesisCheckpointState;
+import net.lenards.kinesis.SerializableClientConfiguration;
+import net.lenards.kinesis.SerializableDefaultAWSCredentialsProviderChain;
 
 import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.Duration;
@@ -29,18 +31,17 @@ public class JKinesisReceiver extends Receiver<byte[]> implements Serializable {
     private static final String APP = "StockTradesProcessor";
     private static final String VERSION = "0.0.1";
 
-    private static ClientConfiguration CLIENT_CONF;
+    private static SerializableClientConfiguration CLIENT_CONF;
 
     private KinesisClientLibConfiguration kclConfig;
     private String workerId;
     private Duration checkpointInterval;
     private InitialPositionInStream initialPosition;
-    private StorageLevel storageLevel;
     private IRecordProcessorFactory recordProcessorFactory;
     private Worker worker;
 
     static {
-        ClientConfiguration config = new ClientConfiguration();
+        SerializableClientConfiguration config = new SerializableClientConfiguration();
         config.setUserAgent(String.format("%s %s/%s",
                             ClientConfiguration.DEFAULT_USER_AGENT,
                             APP, VERSION));
@@ -50,9 +51,8 @@ public class JKinesisReceiver extends Receiver<byte[]> implements Serializable {
     public JKinesisReceiver(String applicationName, String streamName,
                             String endpointUrl, String regionName,
                             Duration checkpoint, InitialPositionInStream position) {
-        super(StorageLevel.MEMORY_ONLY());
+        super(StorageLevel.MEMORY_ONLY_SER());
 
-        this.storageLevel = StorageLevel.MEMORY_ONLY();
         this.workerId = getHostname() + ":" + String.valueOf(UUID.randomUUID());
         this.checkpointInterval = checkpoint;
         this.initialPosition = position;
@@ -88,7 +88,7 @@ public class JKinesisReceiver extends Receiver<byte[]> implements Serializable {
             //AWSCredentialsProvider provider =
             //    new ProfileCredentialsProvider("default");
             //return provider;
-            return new DefaultAWSCredentialsProviderChain();
+            return new SerializableDefaultAWSCredentialsProviderChain();
         } catch (Exception e) {
             throw new AmazonClientException(msg, e);
             //return null;

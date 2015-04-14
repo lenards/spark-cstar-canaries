@@ -51,7 +51,6 @@ public class Consumer implements Serializable {
     private Duration checkpointInterval;
 
     private SparkConf conf;
-    private JavaStreamingContext context;
 
     public Consumer(String appName, String streamName, String endpointUrl,
                     String regionName) {
@@ -66,13 +65,13 @@ public class Consumer implements Serializable {
     private void init() {
         this.conf = new SparkConf(true)
                         .set("spark.cassandra.connection.host", "127.0.0.1")
+                        //.set("spark.files.userClassPathFirst", "true")
                         .setMaster("local[3]")
                         .setAppName(this.appName);
-
-        context = new JavaStreamingContext(conf, checkpointInterval);
     }
 
     public void start() {
+        final JavaStreamingContext context = new JavaStreamingContext(conf, checkpointInterval);
         JKinesisReceiver receiver = new JKinesisReceiver(appName, streamName,
                                                          endpointUrl, regionName,
                                                          checkpointInterval,
@@ -81,15 +80,6 @@ public class Consumer implements Serializable {
         JavaDStream<byte[]> dstream = context.receiverStream(receiver);
 
         dstream.print();
-
-        // gracefully stop the Spark Streaming example
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                System.out.println("Inside Add Shutdown Hook");
-                context.stop(true, true);
-            }
-        });
 
         context.start();
         context.awaitTermination();
@@ -107,11 +97,7 @@ public class Consumer implements Serializable {
 
     public static void main(String[] args) throws Exception {
         verify(args);
-        String appName = args[0];
-        String streamName = args[1];
-        String endpointUrl = args[2];
-        String regionName = args[3];
-        Consumer c = new Consumer(appName, streamName, endpointUrl, regionName);
+        Consumer c = new Consumer(args[0], args[1], args[2], args[3]);
         c.start();
     }
 }
