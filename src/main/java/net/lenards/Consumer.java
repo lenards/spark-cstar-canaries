@@ -3,6 +3,7 @@ package net.lenards;
 import net.lenards.kinesis.KinesisCheckpointState;
 import net.lenards.kinesis.types.*;
 
+import java.net.URLClassLoader;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
@@ -66,6 +67,7 @@ public class Consumer implements Serializable {
         this.conf = new SparkConf(true)
                         .set("spark.cassandra.connection.host", "127.0.0.1")
                         //.set("spark.files.userClassPathFirst", "true")
+                        //.set("spark.executor.userClassPathFirst", "true")
                         .setMaster("local[3]")
                         .setAppName(this.appName);
     }
@@ -96,6 +98,12 @@ public class Consumer implements Serializable {
     }
 
     public static void main(String[] args) throws Exception {
+        System.out.println(
+            Arrays.asList(
+                ((URLClassLoader) (Thread.currentThread().getContextClassLoader())).getURLs()
+            )
+        );
+
         verify(args);
         Consumer c = new Consumer(args[0], args[1], args[2], args[3]);
         c.start();

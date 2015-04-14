@@ -65,6 +65,15 @@
         <artifactId>maven-shade-plugin</artifactId>
         <version>2.3</version>
         <configuration>
+          <artifactSet>
+            <excludes>
+              <exclude>commons-httpclient:*</exclude>
+            </excludes>
+          </artifactSet>
+          <!--
+commons-httpclient:commons-httpclient:jar:3.1:
+            -->
+
           <!--
             thanks to zhentao for this:
             http://zhentao-li.blogspot.com/2012/06/maven-shade-plugin-invalid-signature.html
