@@ -3,6 +3,7 @@ package net.lenards;
 import net.lenards.kinesis.KinesisCheckpointState;
 import net.lenards.kinesis.types.*;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 
@@ -40,7 +41,60 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
 
 
-public class Consumer {
+public class Consumer implements Serializable {
+
+    private String appName;
+    private String streamName;
+    private String endpointUrl;
+    private String regionName;
+
+    private Duration checkpointInterval;
+
+    private SparkConf conf;
+    private JavaStreamingContext context;
+
+    public Consumer(String appName, String streamName, String endpointUrl,
+                    String regionName) {
+        this.appName = appName;
+        this.streamName = streamName;
+        this.endpointUrl = endpointUrl;
+        this.regionName = regionName;
+        this.checkpointInterval = new Duration(EventRecordProcessor.DEFAULT_INTERVAL_IN_MS);
+        init();
+    }
+
+    private void init() {
+        this.conf = new SparkConf(true)
+                        .set("spark.cassandra.connection.host", "127.0.0.1")
+                        .setMaster("local[3]")
+                        .setAppName(this.appName);
+
+        context = new JavaStreamingContext(conf, checkpointInterval);
+    }
+
+    public void start() {
+        JKinesisReceiver receiver = new JKinesisReceiver(appName, streamName,
+                                                         endpointUrl, regionName,
+                                                         checkpointInterval,
+                                                         InitialPositionInStream.LATEST);
+
+        JavaDStream<byte[]> dstream = context.receiverStream(receiver);
+
+        dstream.print();
+
+        // gracefully stop the Spark Streaming example
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                System.out.println("Inside Add Shutdown Hook");
+                context.stop(true, true);
+            }
+        });
+
+        context.start();
+        context.awaitTermination();
+
+    }
 
     public static void verify(String[] args) {
         System.out.println(Arrays.asList(args));
@@ -57,37 +111,7 @@ public class Consumer {
         String streamName = args[1];
         String endpointUrl = args[2];
         String regionName = args[3];
-
-        SparkConf conf = new SparkConf(true)
-                        .set("spark.cassandra.connection.host", "127.0.0.1")
-                        .setMaster("local[3]")
-                        .setAppName(appName);
-
-        Duration batchInterval = new Duration(EventRecordProcessor.DEFAULT_INTERVAL_IN_MS);
-
-        Duration checkpointInterval = batchInterval;
-
-        final JavaStreamingContext jssc = new JavaStreamingContext(conf, batchInterval);
-
-        JKinesisReceiver receiver = new JKinesisReceiver(appName, streamName,
-                                                         endpointUrl, regionName,
-                                                         checkpointInterval,
-                                                         InitialPositionInStream.LATEST);
-
-        JavaDStream<byte[]> dstream = jssc.receiverStream(receiver);
-
-        dstream.print();
-
-        // gracefully stop the Spark Streaming example
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                System.out.println("Inside Add Shutdown Hook");
-                jssc.stop(true, true);
-            }
-        });
-
-        jssc.start();
-        jssc.awaitTermination();
+        Consumer c = new Consumer(appName, streamName, endpointUrl, regionName);
+        c.start();
     }
 }

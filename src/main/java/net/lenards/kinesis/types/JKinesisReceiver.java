@@ -71,20 +71,6 @@ public class JKinesisReceiver extends Receiver<byte[]> implements Serializable {
         } catch (Exception ex) {
             // do absolutely nothing - and feel good about it!
         }
-/*
-        appName, stream, endptUrl, regionName,
-
-        CREDS = getCredsProvider();
-
-        String workerId =
-
-
-
-
- */
-
-
-
     }
 
     private static String getHostname() {
@@ -95,7 +81,6 @@ public class JKinesisReceiver extends Receiver<byte[]> implements Serializable {
         }
     }
 
-
     private static AWSCredentialsProvider getCredsProvider() throws Exception {
         String msg = "Cannot load AWS credentials, no 'default' profile available.";
 
@@ -105,8 +90,8 @@ public class JKinesisReceiver extends Receiver<byte[]> implements Serializable {
             //return provider;
             return new DefaultAWSCredentialsProviderChain();
         } catch (Exception e) {
-            //throw new AmazonClientException(msg, e);
-            return null;
+            throw new AmazonClientException(msg, e);
+            //return null;
         }
     }
 
