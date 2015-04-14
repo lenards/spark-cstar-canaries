@@ -12,7 +12,7 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
 
 public class EventRecordProcessor implements IRecordProcessor, Serializable {
-    public static final long DEFAULT_INTERVAL_IN_MS = 60000L;
+    public static final long DEFAULT_INTERVAL_IN_MS = 10000L;
 
     private String shardId;
     private String workerId;

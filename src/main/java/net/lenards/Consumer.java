@@ -3,11 +3,8 @@ package net.lenards;
 import net.lenards.kinesis.KinesisCheckpointState;
 import net.lenards.kinesis.types.*;
 
-import java.io.Serializable;
-import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.function.FlatMapFunction;
@@ -42,28 +39,8 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
 
-class SerializableDefaultAWSCredentialsProviderChain
-    extends DefaultAWSCredentialsProviderChain
-    implements Serializable {
 
-}
-
-
-public class Consumer implements Serializable {
-    private static final String APP = "StockTradesProcessor";
-    private static final String VERSION = "0.0.1";
-
-    public static ClientConfiguration CLIENT_CONF;
-    public static AWSCredentialsProvider CREDS;
-    public static KinesisClientLibConfiguration KCL_CONFIG;
-
-    static {
-        ClientConfiguration config = new ClientConfiguration();
-        config.setUserAgent(String.format("%s %s/%s",
-                            ClientConfiguration.DEFAULT_USER_AGENT,
-                            APP, VERSION));
-        CLIENT_CONF = config;
-    }
+public class Consumer {
 
     public static void verify(String[] args) {
         System.out.println(Arrays.asList(args));
@@ -74,47 +51,12 @@ public class Consumer implements Serializable {
         }
     }
 
-    public static AWSCredentialsProvider getCredsProvider() throws Exception {
-        String msg = "Cannot load AWS credentials, no 'default' profile available.";
-
-        try {
-            AWSCredentialsProvider provider =
-                new ProfileCredentialsProvider("default");
-            return provider;
-            //return new SerializableDefaultAWSCredentialsProviderChain();
-        } catch (Exception e) {
-            throw new AmazonClientException(msg, e);
-        }
-    }
-
-    private static String getHostname() {
-        try {
-            return InetAddress.getLocalHost().getHostAddress();
-        } catch (Exception ex) {
-            return "localhost";
-        }
-    }
-
     public static void main(String[] args) throws Exception {
         verify(args);
         String appName = args[0];
-        String stream = args[1];
-        String endptUrl = args[2];
-        Region region = RegionUtils.getRegion(args[3]);
-
-        CREDS = getCredsProvider();
-
-        String workerId = getHostname() + ":" + String.valueOf(UUID.randomUUID());
-
-        KinesisClientLibConfiguration kclConfig
-                    = new KinesisClientLibConfiguration(appName, stream, CREDS,
-                                                       workerId)
-                            .withKinesisEndpoint(endptUrl)
-                            .withRegionName(region.getName())
-                            .withCommonClientConfig(Consumer.CLIENT_CONF)
-                            .withInitialPositionInStream(InitialPositionInStream.LATEST)
-                            .withTaskBackoffTimeMillis(500);
-
+        String streamName = args[1];
+        String endpointUrl = args[2];
+        String regionName = args[3];
 
         SparkConf conf = new SparkConf(true)
                         .set("spark.cassandra.connection.host", "127.0.0.1")
@@ -127,7 +69,8 @@ public class Consumer implements Serializable {
 
         final JavaStreamingContext jssc = new JavaStreamingContext(conf, batchInterval);
 
-        JKinesisReceiver receiver = new JKinesisReceiver(kclConfig, workerId,
+        JKinesisReceiver receiver = new JKinesisReceiver(appName, streamName,
+                                                         endpointUrl, regionName,
                                                          checkpointInterval,
                                                          InitialPositionInStream.LATEST);
 
