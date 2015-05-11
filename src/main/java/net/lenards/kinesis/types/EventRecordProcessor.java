@@ -34,8 +34,10 @@ public class EventRecordProcessor implements IRecordProcessor, Serializable {
     @Override
     public void processRecords(List<Record> records,
                                IRecordProcessorCheckpointer checkpointer) {
-        handleRecords(records);
-        checkpointIfNeeded(checkpointer);
+        if (!receiver.isStopped()) {
+            handleRecords(records);
+            checkpointIfNeeded(checkpointer);
+        }
     }
 
     /**
@@ -52,9 +54,9 @@ public class EventRecordProcessor implements IRecordProcessor, Serializable {
 
     private void handleRecords(List<Record> records) {
         for (Record r : records) {
-            this.receiver.store(r.getData().array());
-            System.out.println(String.format("%s: %s", r.getPartitionKey(),
-                r.getData().array()));
+            // this is how we're passing processed data back to Spark Streaming
+            this.receiver.store(r.getPartitionKey() + "|" +
+                                new String(r.getData().array()));
         }
     }
 

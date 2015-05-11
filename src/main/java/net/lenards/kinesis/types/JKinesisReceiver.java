@@ -27,7 +27,7 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionIn
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 
-public class JKinesisReceiver extends Receiver<byte[]> implements Serializable {
+public class JKinesisReceiver extends Receiver<String> implements Serializable {
     private static final String APP = "StockTradesProcessor";
     private static final String VERSION = "0.0.1";
 
@@ -63,13 +63,15 @@ public class JKinesisReceiver extends Receiver<byte[]> implements Serializable {
             this.kclConfig = new KinesisClientLibConfiguration(applicationName, streamName,
                                                       getCredsProvider(),
                                                       workerId)
-                            .withKinesisEndpoint(endpointUrl)
-                            .withRegionName(region.getName())
                             .withCommonClientConfig(CLIENT_CONF)
+                            .withRegionName(region.getName())
+                            .withKinesisEndpoint(endpointUrl)
                             .withInitialPositionInStream(InitialPositionInStream.LATEST)
                             .withTaskBackoffTimeMillis(500);
         } catch (Exception ex) {
             // do absolutely nothing - and feel good about it!
+            // but ...
+            // we'd do something meaningful in a PROD context
         }
     }
 
