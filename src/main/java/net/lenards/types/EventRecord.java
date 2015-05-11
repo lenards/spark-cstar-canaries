@@ -2,6 +2,18 @@ package net.lenards.types;
 
 import java.io.Serializable;
 
+/**
+ * Models events read from Kinesis and stored in Cassandra.
+ *
+ * Note: that this is Java Bean compliant class - it must contain a default
+ * constructor and getters/setters for the columns in the Cassandra table.
+ *
+ * Important: the case of the getters/setters will be used for resolving the
+ * column name mapping to Cassandra.
+ *
+ * See also: Person.class in the following example:
+ * https://github.com/datastax/spark-cassandra-connector/blob/master/doc/7_java_api.md#obtaining-cassandrajavardd
+ */
 public class EventRecord implements Serializable {
     public String key;
     public String cmpkey;

@@ -23,8 +23,9 @@ import com.amazonaws.services.kinesis.model.ResourceNotFoundException;
 
 
 /**
- * Let's write some data to Amazon Kinesis!
+ * Producer event records into the Kinesis stream.
  *
+ * Note: Assumes you have configured a Kinesis stream in AWS w/ DynamoDB backing.
  */
 public class Producer
 {

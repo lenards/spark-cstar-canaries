@@ -35,6 +35,7 @@ public class EventRecordProcessor implements IRecordProcessor, Serializable {
     public void processRecords(List<Record> records,
                                IRecordProcessorCheckpointer checkpointer) {
         if (!receiver.isStopped()) {
+            // this processor works in tandem with the Spark Streaming receiver
             handleRecords(records);
             checkpointIfNeeded(checkpointer);
         }
@@ -54,6 +55,7 @@ public class EventRecordProcessor implements IRecordProcessor, Serializable {
 
     private void handleRecords(List<Record> records) {
         for (Record r : records) {
+            // NOTE:
             // this is how we're passing processed data back to Spark Streaming
             this.receiver.store(r.getPartitionKey() + "|" +
                                 new String(r.getData().array()));
