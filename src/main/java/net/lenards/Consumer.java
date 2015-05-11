@@ -117,21 +117,10 @@ public class Consumer implements Serializable {
 
         recs.print();
 
-        recs.foreach(new Function<JavaRDD<EventRecord>,Void>(){
-            @Override
-            public Void call(JavaRDD<EventRecord> rdd) throws Exception {
-                    System.out.println(rdd.count());
-                    javaFunctions(rdd)
-                        .writerBuilder("canary", "eventrecord", mapToRow(EventRecord.class))
-                        .saveToCassandra();
-                    return null;
-            }
-        });
-        //recs.foreach
         // persist to DStream to Cassandra
-        //javaFunctions(recs)
-        //    .writerBuilder("canary", "eventrecord", mapToRow(EventRecord.class))
-        //    .saveToCassandra();
+        javaFunctions(recs)
+            .writerBuilder("canary", "eventrecord", mapToRow(EventRecord.class))
+            .saveToCassandra();
 
 
         System.out.println("w00 w00!");
