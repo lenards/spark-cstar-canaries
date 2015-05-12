@@ -123,7 +123,7 @@ public class Consumer implements Serializable {
             .saveToCassandra();
 
 
-        System.out.println("w00 w00!");
+        System.out.println("Start Spark Stream Processing...");
 
         context.start();
         context.awaitTermination();
@@ -131,7 +131,7 @@ public class Consumer implements Serializable {
     }
 
     public static void verify(String[] args) {
-        System.out.println(Arrays.asList(args));
+        System.out.println("Command Line Arguments: " + Arrays.asList(args));
         if (!(args.length == 4)) {
             System.out.println("Usage: \n\tConsumer " +
                 "<app-name> <stream-name> <endpoint-url> <aws-region>");
@@ -140,18 +140,6 @@ public class Consumer implements Serializable {
     }
 
     public static void main(String[] args) throws Exception {
-        System.out.println(
-            Arrays.asList(
-                ((URLClassLoader) (Thread.currentThread().getContextClassLoader())).getURLs()
-            )
-        );
-/*
-        ClassLoader cloader = ClassLoader.getSystemClassLoader();
-        URL[] urls = ((URLClassLoader)cloader).getURLs();
-        for (URL url : urls) {
-            System.out.println(url.getFile());
-        }
- */
         verify(args);
         Consumer c = new Consumer(args[0], args[1], args[2], args[3]);
         c.start();
