@@ -71,10 +71,6 @@
             </excludes>
           </artifactSet>
           <!--
-commons-httpclient:commons-httpclient:jar:3.1:
-            -->
-
-          <!--
             thanks to zhentao for this:
             http://zhentao-li.blogspot.com/2012/06/maven-shade-plugin-invalid-signature.html
             -->
@@ -116,26 +112,3 @@ commons-httpclient:commons-httpclient:jar:3.1:
   <repositories>
   </repositories>
 </project>
-
-<!--
-
-    <dependency>
-        <groupId>org.apache.spark</groupId>
-        <artifactId>spark-sql_2.10</artifactId>
-        <version>1.1.0</version>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.spark</groupId>
-        <artifactId>spark-streaming_2.10</artifactId>
-        <version>1.1.0</version>
-    </dependency>
-
-Included in DSE 4.6.2 in http://localhost:4040/environment/ when running `dse spark`:
-
-  spark-cassandra-connector_2.10-1.1.0.jar
-  spark-cassandra-connector-java_2.10-1.1.0.jar
-  spark-core_2.10-1.1.0.2.jar
-  spark-streaming_2.10-1.1.0.2.jar
-  spark-sql_2.10-1.1.0.2.jar
-
-  -->
