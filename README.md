@@ -2,7 +2,7 @@
 
 Simple Java applications that use the [spark-cassandra-connector](https://github.com/datastax/spark-cassandra-connector) to verify deployment configuration.
 
-*Note: **Available as is.** Only for demonstration use for development configuration verification.*
+*Note: Available as is. Only for demonstration use for development configuration verification.*
 
 ## Build
 
